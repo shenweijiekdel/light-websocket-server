@@ -1,10 +1,8 @@
 package ws
 
 import (
-	"errors"
 	"github.com/gorilla/websocket"
 	"net/http"
-	"time"
 )
 
 type (
@@ -27,8 +25,7 @@ func NewServer(option Option) Server {
 }
 
 type Server interface {
-	Listen(path string, addr string) error
-	EndpointHandler(handler EndpointHandler)
+	UpgradeEndpoint(endpointId string, w http.ResponseWriter, r *http.Request) (IEndpoint, error)
 }
 
 type ServerImpl struct {
@@ -37,41 +34,19 @@ type ServerImpl struct {
 	endpointHandler EndpointHandler
 }
 
-func (s *ServerImpl) Listen(path string, addr string) error {
-	if s.endpointHandler == nil {
-		return errors.New("please set endpoint handler")
+func (s *ServerImpl) UpgradeEndpoint(endpointId string, w http.ResponseWriter, r *http.Request) (IEndpoint, error) {
+	responseHeader := http.Header{
+		"Sec-WebSocket-Protocol": r.Header.Values("Sec-WebSocket-Protocol"),
 	}
 
-	http.HandleFunc(path, s.handleWebsocket)
-	server := http.Server{
-		Addr:        addr,
-		ReadTimeout: 2 * time.Second,
+	conn, err := s.upgrade.Upgrade(w, r, responseHeader)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
-	}
-	return nil
+	return NewEndpoint(endpointId, conn), nil
 }
 
 func (s *ServerImpl) EndpointHandler(handler EndpointHandler) {
 	s.endpointHandler = handler
-}
-
-func (s *ServerImpl) handleWebsocket(w http.ResponseWriter, r *http.Request) {
-	s.endpointHandler(r, func(endpointId string) IEndpoint {
-		responseHeader := http.Header{
-			"Sec-WebSocket-Protocol": r.Header.Values("Sec-WebSocket-Protocol"),
-		}
-
-		conn, err := s.upgrade.Upgrade(w, r, responseHeader)
-		if err != nil {
-			w.WriteHeader(400)
-			_, _ = w.Write([]byte("error"))
-		}
-
-		return NewEndpoint(endpointId, conn)
-	}, func(httpStatus int) {
-		w.WriteHeader(httpStatus)
-	})
 }
