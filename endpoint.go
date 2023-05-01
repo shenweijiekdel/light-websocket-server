@@ -90,6 +90,10 @@ func (e *Endpoint) onStanza(b []byte) {
 	e.handleStanza(s)
 }
 
+func (e *Endpoint) Kickoff() error {
+	return e.Send(stanza.Kickoff{})
+}
+
 func (e *Endpoint) Send(s stanza.Stanza) error {
 	b, err := stanza.Encode(s)
 	if err != nil {

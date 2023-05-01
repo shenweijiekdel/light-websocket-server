@@ -5,14 +5,11 @@ import (
 	"errors"
 )
 
-const (
-	TypeMessage byte = 0x04
-	TypePing    byte = 0x05
-	TypePong    byte = 0x06
-)
-
 func Encode(stanza Stanza) ([]byte, error) {
 	switch stanza.Type() {
+	case TypeKickoff:
+		return encodeKickoff()
+
 	case TypePing:
 		return encodePing()
 
@@ -28,17 +25,19 @@ func Encode(stanza Stanza) ([]byte, error) {
 }
 
 func encodeMessage(event Message) ([]byte, error) {
-	var b = []byte{TypeMessage}
-
 	buf := bytes.Buffer{}
 	buf.WriteByte(TypeMessage)
 	buf.Write(event)
 
-	return b, nil
+	return buf.Bytes(), nil
 }
 
 func encodePing() ([]byte, error) {
 	return []byte{TypePing}, nil
+}
+
+func encodeKickoff() ([]byte, error) {
+	return []byte{TypeKickoff}, nil
 }
 
 func encodePong() ([]byte, error) {
@@ -59,20 +58,23 @@ func Decode(b []byte) (Stanza, error) {
 	case TypePong:
 		return Pong{}, nil
 
+	case TypeKickoff:
+		return Kickoff{}, nil
+
 	case TypeMessage:
-		return decodeEvent(buf)
+		return decodeMessage(buf)
 
 	default:
 		return nil, errors.New("invalid stanza type")
 	}
 }
 
-func decodeEvent(buf *bytes.Buffer) (*Message, error) {
-	var message Message
+func decodeMessage(buf *bytes.Buffer) (Message, error) {
+	message := make([]byte, buf.Len())
 	_, err := buf.Read(message)
 	if err != nil {
 		return nil, err
 	}
 
-	return &message, nil
+	return message, nil
 }
