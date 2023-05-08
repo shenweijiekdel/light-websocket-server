@@ -79,8 +79,6 @@ func (e *Endpoint) onStanza(b []byte) {
 		}
 	}()
 
-	log.Printf("Endpoint [%s] recv: %v\n", e.id, b)
-
 	s, err := stanza.Decode(b)
 	if err != nil {
 		log.Printf("Endpoint [%s] stanza decode error: %v\n", e.id, err)
@@ -100,7 +98,6 @@ func (e *Endpoint) Send(s stanza.Stanza) error {
 		return err
 	}
 
-	log.Printf("Endpoint [%s] send %s", e.id, b)
 	return e.conn.write(b)
 }
 
